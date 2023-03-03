@@ -33,21 +33,22 @@ func TestScrapeGlobalVariables(t *testing.T) {
 
 	columns := []string{"Variable_name", "Value"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("wait_timeout", "28800").
-		AddRow("version_compile_os", "Linux").
-		AddRow("userstat", "OFF").
-		AddRow("transaction_prealloc_size", "4096").
-		AddRow("tx_isolation", "REPEATABLE-READ").
-		AddRow("tmp_table_size", "16777216").
-		AddRow("tmpdir", "/tmp").
-		AddRow("sync_binlog", "0").
-		AddRow("sync_frm", "ON").
-		AddRow("slow_launch_time", "2").
-		AddRow("innodb_version", "5.6.30-76.3").
-		AddRow("version", "5.6.30-76.3-56").
-		AddRow("version_comment", "Percona XtraDB Cluster...").
-		AddRow("wsrep_cluster_name", "supercluster").
-		AddRow("wsrep_provider_options", "base_dir = /var/lib/mysql/; base_host = 10.91.142.82; base_port = 4567; cert.log_conflicts = no; debug = no; evs.auto_evict = 0; evs.causal_keepalive_period = PT1S; evs.debug_log_mask = 0x1; evs.delay_margin = PT1S; evs.delayed_keep_period = PT30S; evs.inactive_check_period = PT0.5S; evs.inactive_timeout = PT15S; evs.info_log_mask = 0; evs.install_timeout = PT7.5S; evs.join_retrans_period = PT1S; evs.keepalive_period = PT1S; evs.max_install_timeouts = 3; evs.send_window = 4; evs.stats_report_period = PT1M; evs.suspect_timeout = PT5S; evs.use_aggregate = true; evs.user_send_window = 2; evs.version = 0; evs.view_forget_timeout = P1D; gcache.dir = /var/lib/mysql/; gcache.keep_pages_count = 0; gcache.keep_pages_size = 0; gcache.mem_size = 0; gcache.name = /var/lib/mysql//galera.cache; gcache.page_size = 128M; gcache.size = 128M; gcomm.thread_prio = ; gcs.fc_debug = 0; gcs.fc_factor = 1.0; gcs.fc_limit = 16; gcs.fc_master_slave = no; gcs.max_packet_size = 64500; gcs.max_throttle = 0.25; gcs.recv_q_hard_limit = 9223372036854775807; gcs.recv_q_soft_limit = 0.25; gcs.sync_donor = no; gmcast.listen_addr = tcp://0.0.0.0:4567; gmcast.mcast_addr = ; gmcast.mcast_ttl = 1; gmcast.peer_timeout = PT3S; gmcast.segment = 0; gmcast.time_wait = PT5S; gmcast.version = 0; ist.recv_addr = 10.91.142.82; pc.announce_timeout = PT3S; pc.checksum = false; pc.ignore_quorum = false; pc.ignore_sb = false; pc.linger = PT20S; pc.npvo = false; pc.recovery = true; pc.version = 0; pc.wait_prim = true; pc.wait_prim_timeout = P30S; pc.weight = 1; protonet.backend = asio; protonet.version = 0; repl.causal_read_timeout = PT30S; repl.commit_order = 3; repl.key_format = FLAT8; repl.max_ws_size = 2147483647; repl.proto_max = 7; socket.checksum = 2; socket.recv_buf_size = 212992;")
+		AddRow("tidb_gc_life_time", "168h").
+		AddRow("tls_version", "TLSv1,TLSv1.1,TLSv1.2"). // literal, skip
+		AddRow("tidb_enable_async_commit", "on").
+		AddRow("tidb_query_log_max_len", "4096").
+		AddRow("tidb_rc_write_check_ts", "off").
+		AddRow("tidb_server_memory_limit_sess_min_size", "134217728").
+		AddRow("tidb_max_tiflash_threads", "-1").
+		AddRow("lower_case_table_names", "2").          // noop for tidb, skip
+		AddRow("innodb_default_row_format", "dynamic"). // literal, skip
+		AddRow("tidb_init_chunk_size", "32").
+		AddRow("tidb_replica_read", "leader").        // literal, skip
+		AddRow("rpl_semi_sync_slave_enabled", "OFF"). // noop for tidb, skip
+		AddRow("innodb_open_files", "2000").          // noop for tidb, skip
+		AddRow("tidb_persist_analyze_options", "ON").
+		AddRow("version", "5.7.25-TiDB-v6.5.0").
+		AddRow("version_comment", "TiDB Server (Apache License 2.0) Enterprise Edition, MySQL 5.7 compatible")
 	mock.ExpectQuery(globalVariablesQuery).WillReturnRows(rows)
 
 	ch := make(chan prometheus.Metric)
@@ -59,16 +60,15 @@ func TestScrapeGlobalVariables(t *testing.T) {
 	}()
 
 	counterExpected := []MetricResult{
-		{labels: labelMap{}, value: 28800, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{}, value: 0, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{}, value: 4096, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{}, value: 16777216, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{}, value: 0, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: 604800, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{}, value: 1, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{}, value: 2, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"version": "5.6.30-76.3-56", "version_comment": "Percona XtraDB Cluster..."}, value: 1, metricType: dto.MetricType_GAUGE},
-		{labels: labelMap{"wsrep_cluster_name": "supercluster"}, value: 1, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: 4096, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: 0, metricType: dto.MetricType_GAUGE},
 		{labels: labelMap{}, value: 134217728, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: -1, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: 32, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{}, value: 1, metricType: dto.MetricType_GAUGE},
+		{labels: labelMap{"version": "5.7.25-TiDB-v6.5.0", "version_comment": "TiDB Server (Apache License 2.0) Enterprise Edition, MySQL 5.7 compatible"}, value: 1, metricType: dto.MetricType_GAUGE},
 	}
 	convey.Convey("Metrics comparison", t, func() {
 		for _, expect := range counterExpected {
