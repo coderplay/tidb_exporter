@@ -168,7 +168,7 @@ func TestBin(t *testing.T) {
 		}
 	}()
 
-	importpath := "github.com/prometheus/mysqld_exporter/vendor/github.com/prometheus/common"
+	importpath := "github.com/coderplay/tidb_exporter/vendor/github.com/prometheus/common"
 	path := binDir + "/" + binName
 	xVariables := map[string]string{
 		importpath + "/version.Version":  "gotest-version",

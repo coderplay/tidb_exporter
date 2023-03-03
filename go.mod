@@ -1,4 +1,4 @@
-module github.com/prometheus/mysqld_exporter
+module github.com/coderplay/tidb_exporter
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
