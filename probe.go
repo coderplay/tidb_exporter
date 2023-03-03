@@ -17,11 +17,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/coderplay/tidb_exporter/collector"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/mysqld_exporter/collector"
 )
 
 func handleProbe(metrics collector.Metrics, scrapers []collector.Scraper, logger log.Logger) http.HandlerFunc {

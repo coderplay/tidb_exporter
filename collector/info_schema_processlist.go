@@ -22,6 +22,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"reflect"
+	"sort"
 )
 
 const infoSchemaProcesslistQuery = `
@@ -170,44 +172,48 @@ func (ScrapeProcesslist) Scrape(ctx context.Context, db *sql.DB, ch chan<- prome
 
 	}
 
+	for _, state := range sortedMapKeys(stateTime) {
+		ch <- prometheus.MustNewConstMetric(processlistCountDesc, prometheus.GaugeValue, float64(stateCounts[state]), state)
+		ch <- prometheus.MustNewConstMetric(processlistTimeDesc, prometheus.GaugeValue, float64(stateTime[state]), state)
+		ch <- prometheus.MustNewConstMetric(processlistMemDesc, prometheus.GaugeValue, float64(stateMem[state]), state)
+		ch <- prometheus.MustNewConstMetric(processlistDiskDesc, prometheus.GaugeValue, float64(stateDisk[state]), state)
+	}
+
 	if *processesByServerFlag {
-		for server, processes := range serverCount {
-			ch <- prometheus.MustNewConstMetric(processesByServerDesc, prometheus.GaugeValue, float64(processes), server)
+		for _, server := range sortedMapKeys(serverCount) {
+			ch <- prometheus.MustNewConstMetric(processesByServerDesc, prometheus.GaugeValue, float64(serverCount[server]), server)
 		}
 	}
 
 	if *processesByClientFlag {
-		for client, processes := range clientCount {
-			ch <- prometheus.MustNewConstMetric(processesByClientDesc, prometheus.GaugeValue, float64(processes), client)
+		for _, client := range sortedMapKeys(clientCount) {
+			ch <- prometheus.MustNewConstMetric(processesByClientDesc, prometheus.GaugeValue, float64(clientCount[client]), client)
 		}
 	}
 
 	if *processesByUserFlag {
-		for user, processes := range userCount {
-			ch <- prometheus.MustNewConstMetric(processesByUserDesc, prometheus.GaugeValue, float64(processes), user)
+		for _, user := range sortedMapKeys(userCount) {
+			ch <- prometheus.MustNewConstMetric(processesByUserDesc, prometheus.GaugeValue, float64(userCount[user]), user)
 		}
 	}
 
 	if *processesByDBFlag {
-		for database, processes := range dbCount {
-			ch <- prometheus.MustNewConstMetric(processesByDBDesc, prometheus.GaugeValue, float64(processes), database)
+		for _, database := range sortedMapKeys(dbCount) {
+			ch <- prometheus.MustNewConstMetric(processesByDBDesc, prometheus.GaugeValue, float64(dbCount[databse]), database)
 		}
 	}
 
-	for state, processes := range stateCounts {
-		ch <- prometheus.MustNewConstMetric(processlistCountDesc, prometheus.GaugeValue, float64(processes), state)
-	}
-	for state, time := range stateTime {
-		ch <- prometheus.MustNewConstMetric(processlistTimeDesc, prometheus.GaugeValue, float64(time), state)
-	}
-	for state, mem := range stateMem {
-		ch <- prometheus.MustNewConstMetric(processlistMemDesc, prometheus.GaugeValue, float64(mem), state)
-	}
-	for state, disk := range stateDisk {
-		ch <- prometheus.MustNewConstMetric(processlistDiskDesc, prometheus.GaugeValue, float64(disk), state)
-	}
-
 	return nil
+}
+
+func sortedMapKeys(m interface{}) []string {
+	v := reflect.ValueOf(m)
+	keys := make([]string, 0, len(v.MapKeys()))
+	for _, key := range v.MapKeys() {
+		keys = append(keys, key.String())
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // check interface

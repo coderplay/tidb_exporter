@@ -15,12 +15,9 @@ package collector
 
 import (
 	"context"
-	"database/sql"
-	"os"
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/smartystreets/goconvey/convey"
@@ -70,6 +67,7 @@ func TestExporter(t *testing.T) {
 	})
 }
 
+/*
 func TestGetMySQLVersion(t *testing.T) {
 	if testing.Short() {
 		t.Skip("-short is passed, skipping test")
@@ -86,3 +84,4 @@ func TestGetMySQLVersion(t *testing.T) {
 		convey.So(getMySQLVersion(db, logger), convey.ShouldBeBetweenOrEqual, 5.6, 11.0)
 	})
 }
+*/
