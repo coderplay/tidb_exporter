@@ -1,4 +1,4 @@
-module github.com/prometheus/mysqld_exporter
+module github.com/coderplay/tidb_exporter
 
 go 1.18
 

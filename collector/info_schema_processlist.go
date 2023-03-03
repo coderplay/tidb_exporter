@@ -19,10 +19,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"reflect"
-	"sort"
-	"strings"
-
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -30,17 +26,18 @@ import (
 
 const infoSchemaProcesslistQuery = `
 		  SELECT
+		    instance,
 		    user,
 		    SUBSTRING_INDEX(host, ':', 1) AS host,
-		    COALESCE(command, '') AS command,
-		    COALESCE(state, '') AS state,
-		    COUNT(*) AS processes,
-		    SUM(time) AS seconds
-		  FROM information_schema.processlist
+		    COALESCE(db,'') AS db,
+		    time,
+		    state,
+		    mem,
+		    disk
+		  FROM information_schema.cluster_processlist
 		  WHERE ID != connection_id()
 		    AND TIME >= %d
-		  GROUP BY user, SUBSTRING_INDEX(host, ':', 1), command, state
-	`
+		`
 
 // Tunable flags.
 var (
@@ -52,30 +49,54 @@ var (
 		"collect.info_schema.processlist.processes_by_user",
 		"Enable collecting the number of processes by user",
 	).Default("true").Bool()
-	processesByHostFlag = kingpin.Flag(
-		"collect.info_schema.processlist.processes_by_host",
-		"Enable collecting the number of processes by host",
+	processesByClientFlag = kingpin.Flag(
+		"collect.info_schema.processlist.processes_by_client",
+		"Enable collecting the number of processes by client host",
+	).Default("true").Bool()
+	processesByServerFlag = kingpin.Flag(
+		"collect.info_schema.processlist.processes_by_server",
+		"Enable collecting the number of processes by tidb server host",
+	).Default("true").Bool()
+	processesByDBFlag = kingpin.Flag(
+		"collect.info_schema.processlist.processes_by_db",
+		"Enable collecting the number of processes by database",
 	).Default("true").Bool()
 )
 
 // Metric descriptors.
 var (
 	processlistCountDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, informationSchema, "processlist_threads"),
-		"The number of threads split by current state.",
-		[]string{"command", "state"}, nil)
+		prometheus.BuildFQName(namespace, informationSchema, "threads"),
+		"The number of threads (connections) split by current state.",
+		[]string{"state"}, nil)
 	processlistTimeDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, informationSchema, "processlist_seconds"),
-		"The number of seconds threads have used split by current state.",
-		[]string{"command", "state"}, nil)
+		prometheus.BuildFQName(namespace, informationSchema, "threads_seconds"),
+		"The number of seconds threads (connections) have used split by current state.",
+		[]string{"state"}, nil)
+	processlistMemDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, informationSchema, "memory_bytes"),
+		"The number of bytes memory have allocated split by current state.",
+		[]string{"state"}, nil)
+	processlistDiskDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, informationSchema, "disk_bytes"),
+		"The number of disk bytes have used split by current state.",
+		[]string{"state"}, nil)
 	processesByUserDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, informationSchema, "processlist_processes_by_user"),
+		prometheus.BuildFQName(namespace, informationSchema, "processes_by_user"),
 		"The number of processes by user.",
 		[]string{"mysql_user"}, nil)
-	processesByHostDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, informationSchema, "processlist_processes_by_host"),
-		"The number of processes by host.",
-		[]string{"client_host"}, nil)
+	processesByDBDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, informationSchema, "processes_by_db"),
+		"The number of processes by database.",
+		[]string{"db"}, nil)
+	processesByClientDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, informationSchema, "processes_by_client"),
+		"The number of processes by client host.",
+		[]string{"client"}, nil)
+	processesByServerDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, informationSchema, "processes_by_server"),
+		"The number of processes by tidb server node.",
+		[]string{"server"}, nil)
 )
 
 // ScrapeProcesslist collects from `information_schema.processlist`.
@@ -109,102 +130,84 @@ func (ScrapeProcesslist) Scrape(ctx context.Context, db *sql.DB, ch chan<- prome
 	defer processlistRows.Close()
 
 	var (
-		user    string
-		host    string
-		command string
-		state   string
-		count   uint32
-		time    uint32
+		instance string
+		user     string
+		host     string
+		databse  string
+		time     uint32
+		state    string
+		mem      uint64
+		disk     uint64
 	)
-	// Define maps
-	stateCounts := make(map[string]map[string]uint32)
-	stateTime := make(map[string]map[string]uint32)
-	stateHostCounts := make(map[string]uint32)
-	stateUserCounts := make(map[string]uint32)
+	stateCounts := make(map[string]uint32)
+	stateTime := make(map[string]uint32)
+	stateMem := make(map[string]uint64)
+	stateDisk := make(map[string]uint64)
+	clientCount := make(map[string]uint32)
+	userCount := make(map[string]uint32)
+	dbCount := make(map[string]uint32)
+	serverCount := make(map[string]uint32)
 
 	for processlistRows.Next() {
-		err = processlistRows.Scan(&user, &host, &command, &state, &count, &time)
+		err = processlistRows.Scan(&instance, &user, &host, &databse, &time, &state, &mem, &disk)
 		if err != nil {
 			return err
 		}
-		command = sanitizeState(command)
-		state = sanitizeState(state)
 		if host == "" {
 			host = "unknown"
 		}
 
 		// Init maps
-		if _, ok := stateCounts[command]; !ok {
-			stateCounts[command] = make(map[string]uint32)
-			stateTime[command] = make(map[string]uint32)
-		}
-		if _, ok := stateCounts[command][state]; !ok {
-			stateCounts[command][state] = 0
-			stateTime[command][state] = 0
-		}
-		if _, ok := stateHostCounts[host]; !ok {
-			stateHostCounts[host] = 0
-		}
-		if _, ok := stateUserCounts[user]; !ok {
-			stateUserCounts[user] = 0
-		}
+		stateCounts[state] += 1
+		stateTime[state] += time
+		stateMem[state] += mem
+		stateDisk[state] += disk
 
-		stateCounts[command][state] += count
-		stateTime[command][state] += time
-		stateHostCounts[host] += count
-		stateUserCounts[user] += count
+		serverCount[instance] += 1
+		clientCount[host] += 1
+		userCount[user] += 1
+		dbCount[databse] += 1
+
 	}
 
-	for _, command := range sortedMapKeys(stateCounts) {
-		for _, state := range sortedMapKeys(stateCounts[command]) {
-			ch <- prometheus.MustNewConstMetric(processlistCountDesc, prometheus.GaugeValue, float64(stateCounts[command][state]), command, state)
-			ch <- prometheus.MustNewConstMetric(processlistTimeDesc, prometheus.GaugeValue, float64(stateTime[command][state]), command, state)
+	if *processesByServerFlag {
+		for server, processes := range serverCount {
+			ch <- prometheus.MustNewConstMetric(processesByServerDesc, prometheus.GaugeValue, float64(processes), server)
 		}
 	}
 
-	if *processesByHostFlag {
-		for _, host := range sortedMapKeys(stateHostCounts) {
-			ch <- prometheus.MustNewConstMetric(processesByHostDesc, prometheus.GaugeValue, float64(stateHostCounts[host]), host)
+	if *processesByClientFlag {
+		for client, processes := range clientCount {
+			ch <- prometheus.MustNewConstMetric(processesByClientDesc, prometheus.GaugeValue, float64(processes), client)
 		}
 	}
+
 	if *processesByUserFlag {
-		for _, user := range sortedMapKeys(stateUserCounts) {
-			ch <- prometheus.MustNewConstMetric(processesByUserDesc, prometheus.GaugeValue, float64(stateUserCounts[user]), user)
+		for user, processes := range userCount {
+			ch <- prometheus.MustNewConstMetric(processesByUserDesc, prometheus.GaugeValue, float64(processes), user)
 		}
+	}
+
+	if *processesByDBFlag {
+		for database, processes := range dbCount {
+			ch <- prometheus.MustNewConstMetric(processesByDBDesc, prometheus.GaugeValue, float64(processes), database)
+		}
+	}
+
+	for state, processes := range stateCounts {
+		ch <- prometheus.MustNewConstMetric(processlistCountDesc, prometheus.GaugeValue, float64(processes), state)
+	}
+	for state, time := range stateTime {
+		ch <- prometheus.MustNewConstMetric(processlistTimeDesc, prometheus.GaugeValue, float64(time), state)
+	}
+	for state, mem := range stateMem {
+		ch <- prometheus.MustNewConstMetric(processlistMemDesc, prometheus.GaugeValue, float64(mem), state)
+	}
+	for state, disk := range stateDisk {
+		ch <- prometheus.MustNewConstMetric(processlistDiskDesc, prometheus.GaugeValue, float64(disk), state)
 	}
 
 	return nil
-}
-
-func sortedMapKeys(m interface{}) []string {
-	v := reflect.ValueOf(m)
-	keys := make([]string, 0, len(v.MapKeys()))
-	for _, key := range v.MapKeys() {
-		keys = append(keys, key.String())
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-func sanitizeState(state string) string {
-	if state == "" {
-		state = "unknown"
-	}
-	state = strings.ToLower(state)
-	replacements := map[string]string{
-		";": "",
-		",": "",
-		":": "",
-		".": "",
-		"(": "",
-		")": "",
-		" ": "_",
-		"-": "_",
-	}
-	for r := range replacements {
-		state = strings.Replace(state, r, replacements[r], -1)
-	}
-	return state
 }
 
 // check interface

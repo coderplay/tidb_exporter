@@ -26,7 +26,7 @@ import (
 
 const (
 	// Exporter namespace.
-	namespace = "mysql"
+	namespace = "tidb"
 	// Math constant for picoseconds to seconds.
 	picoSeconds = 1e12
 	// Query to check whether user/table/client stats are enabled.
@@ -59,6 +59,11 @@ func parseStatus(data sql.RawBytes) (float64, bool) {
 	case "non-primary", "disconnected":
 		return 0, true
 	}
+
+	if duration, err := time.ParseDuration(dataString); err == nil {
+		return duration.Seconds(), true
+	}
+
 	if ts, err := time.Parse("Jan 02 15:04:05 2006 MST", string(data)); err == nil {
 		return float64(ts.Unix()), true
 	}

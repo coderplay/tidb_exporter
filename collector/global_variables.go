@@ -19,7 +19,6 @@ import (
 	"context"
 	"database/sql"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/go-kit/log"
@@ -31,93 +30,464 @@ const (
 	globalVariables = "global_variables"
 	// Metric SQL Queries.
 	globalVariablesQuery = `SHOW GLOBAL VARIABLES`
+	//
+	noopGlobalVariablesString = `
+automatic_sp_privileges
+avoid_temporal_upgrade
+back_log
+basedir
+big_tables
+bind_address
+binlog_cache_size
+binlog_checksum
+binlog_direct_non_transactional_updates
+binlog_error_action
+binlog_format
+binlog_group_commit_sync_delay
+binlog_group_commit_sync_no_delay_count
+binlog_gtid_simple_recovery
+binlog_max_flush_queue_time
+binlog_order_commits
+binlog_row_image
+binlog_row_query_log_events
+binlog_stmt_cache_size
+binlogging_impossible_mode
+bulk_insert_buffer_size
+character_set_filesystem
+character_set_system
+character_sets_dir
+check_proxy_users
+completion_type
+concurrent_insert
+connect_timeout
+core_file
+date_format
+datetime_format
+debug
+debug_sync
+default_password_lifetime
+default_storage_engine
+default_tmp_storage_engine
+delay_key_write
+delayed_insert_limit
+delayed_insert_timeout
+delayed_queue_size
+div_precision_increment
+end_markers_in_json
+enforce_gtid_consistency
+eq_range_index_dive_limit
+event_scheduler
+executed_gtids_compression_period
+expire_logs_days
+explicit_defaults_for_timestamp
+flush
+flush_time
+ft_boolean_syntax
+ft_max_word_len
+ft_min_word_len
+ft_query_expansion_limit
+ft_stopword_file
+general_log
+general_log_file
+gtid_executed_compression_period
+gtid_mode
+gtid_next
+gtid_purged
+have_compress
+have_crypt
+have_dynamic_loading
+have_geometry
+have_profiling
+have_query_cache
+have_rtree_keys
+have_symlink
+host_cache_size
+ignore_builtin_innodb
+information_schema_stats_expiry
+init_slave
+innodb_adaptive_flushing
+innodb_adaptive_flushing_lwm
+innodb_adaptive_hash_index
+innodb_adaptive_max_sleep_delay
+innodb_additional_mem_pool_size
+innodb_api_bk_commit_interval
+innodb_api_disable_rowlock
+innodb_api_enable_binlog
+innodb_api_enable_mdl
+innodb_api_trx_level
+innodb_autoextend_increment
+innodb_autoinc_lock_mode
+innodb_buffer_pool_dump_at_shutdown
+innodb_buffer_pool_dump_now
+innodb_buffer_pool_dump_pct
+innodb_buffer_pool_filename
+innodb_buffer_pool_instances
+innodb_buffer_pool_load_abort
+innodb_buffer_pool_load_at_startup
+innodb_buffer_pool_load_now
+innodb_buffer_pool_size
+innodb_change_buffer_max_size
+innodb_change_buffering
+innodb_checksum_algorithm
+innodb_checksums
+innodb_cmp_per_index_enabled
+innodb_commit_concurrency
+innodb_compression_failure_threshold_pct
+innodb_compression_level
+innodb_compression_pad_pct_max
+innodb_concurrency_tickets
+innodb_create_intrinsic
+innodb_data_file_path
+innodb_default_row_format
+innodb_disable_sort_file_cache
+innodb_doublewrite
+innodb_fast_shutdown
+innodb_file_format
+innodb_file_format_check
+innodb_file_format_max
+innodb_file_per_table
+innodb_fill_factor
+innodb_flush_log_at_timeout
+innodb_flush_log_at_trx_commit
+innodb_flush_neighbors
+innodb_flush_sync
+innodb_flushing_avg_loops
+innodb_force_load_corrupted
+innodb_force_recovery
+innodb_ft_aux_table
+innodb_ft_cache_size
+innodb_ft_enable_diag_print
+innodb_ft_enable_stopword
+innodb_ft_max_token_size
+innodb_ft_min_token_size
+innodb_ft_num_word_optimize
+innodb_ft_result_cache_limit
+innodb_ft_server_stopword_table
+innodb_ft_sort_pll_degree
+innodb_ft_total_cache_size
+innodb_ft_user_stopword_table
+innodb_io_capacity
+innodb_io_capacity_max
+innodb_large_prefix
+innodb_locks_unsafe_for_binlog
+innodb_log_buffer_size
+innodb_log_checksum_algorithm
+innodb_log_compressed_pages
+innodb_log_file_size
+innodb_log_files_in_group
+innodb_log_group_home_dir
+innodb_log_write_ahead_size
+innodb_lru_scan_depth
+innodb_max_dirty_pages_pct
+innodb_max_dirty_pages_pct_lwm
+innodb_max_purge_lag
+innodb_max_purge_lag_delay
+innodb_max_undo_log_size
+innodb_mirrored_log_groups
+innodb_monitor_disable
+innodb_monitor_enable
+innodb_monitor_reset
+innodb_monitor_reset_all
+innodb_old_blocks_pct
+innodb_old_blocks_time
+innodb_online_alter_log_max_size
+innodb_open_files
+innodb_optimize_fulltext_only
+innodb_optimize_point_storage
+innodb_page_size
+innodb_print_all_deadlocks
+innodb_purge_batch_size
+innodb_purge_rseg_truncate_frequency
+innodb_purge_threads
+innodb_random_read_ahead
+innodb_read_ahead_threshold
+innodb_read_io_threads
+innodb_read_only
+innodb_replication_delay
+innodb_rollback_on_timeout
+innodb_rollback_segments
+innodb_sort_buffer_size
+innodb_spin_wait_delay
+innodb_stats_auto_recalc
+innodb_stats_method
+innodb_stats_on_metadata
+innodb_stats_persistent
+innodb_stats_persistent_sample_pages
+innodb_stats_sample_pages
+innodb_stats_transient_sample_pages
+innodb_status_output
+innodb_status_output_locks
+innodb_strict_mode
+innodb_support_xa
+innodb_sync_array_size
+innodb_sync_spin_loops
+innodb_table_locks
+innodb_thread_concurrency
+innodb_thread_sleep_delay
+innodb_undo_directory
+innodb_undo_log_truncate
+innodb_undo_logs
+innodb_undo_tablespaces
+innodb_use_native_aio
+innodb_use_sys_malloc
+innodb_version
+innodb_write_io_threads
+insert_id
+internal_tmp_disk_storage_engine
+join_buffer_size
+keep_files_on_create
+key_buffer_size
+key_cache_age_threshold
+key_cache_block_size
+key_cache_division_limit
+large_files_support
+large_page_size
+large_pages
+lc_messages
+lc_messages_dir
+lc_time_names
+local_infile
+lock_wait_timeout
+locked_in_memory
+log_backward_compatible_user_definitions
+log_bin_trust_function_creators
+log_bin_use_v1_row_events
+log_error
+log_error_verbosity
+log_output
+log_queries_not_using_indexes
+log_slave_updates
+log_slow_admin_statements
+log_slow_slave_statements
+log_syslog
+log_syslog_facility
+log_syslog_include_pid
+log_syslog_tag
+log_throttle_queries_not_using_indexes
+log_timestamps
+log_warnings
+long_query_time
+low_priority_updates
+lower_case_file_system
+lower_case_table_names
+master_info_repository
+master_verify_checksum
+max_binlog_cache_size
+max_binlog_size
+max_binlog_stmt_cache_size
+max_connect_errors
+max_delayed_threads
+max_digest_length
+max_error_count
+max_heap_table_size
+max_insert_delayed_threads
+max_join_size
+max_length_for_sort_data
+max_points_in_geometry
+max_relay_log_size
+max_seeks_for_key
+max_sort_length
+max_sp_recursion_depth
+max_statement_time
+max_tmp_tables
+max_user_connections
+max_write_lock_count
+metadata_locks_cache_size
+metadata_locks_hash_instances
+min_examined_row_limit
+multi_range_count
+myisam_data_pointer_size
+myisam_max_sort_file_size
+myisam_mmap_size
+myisam_recover_options
+myisam_repair_threads
+myisam_sort_buffer_size
+myisam_stats_method
+myisam_use_mmap
+mysql_native_password_proxy_users
+ndb_blob_write_batch_bytes
+ndb_deferred_constraints
+ndb_distribution
+ndb_eventbuffer_free_percent
+ndb_eventbuffer_max_alloc
+ndb_force_send
+ndb_index_stat_enable
+ndb_index_stat_option
+ndb_join_pushdown
+ndb_log_binlog_index
+ndb_log_empty_epochs
+ndb_log_updated_only
+ndb_optimization_delay
+ndb_recv_thread_cpu_mask
+ndb_show_foreign_key_mock_tables
+ndb_table_no_logging
+ndb_use_transactions
+ndbinfo_max_rows
+ndbinfo_show_hidden
+net_buffer_length
+net_read_timeout
+net_retry_count
+net_write_timeout
+new
+offline_mode
+old
+old_alter_table
+old_passwords
+open_files_limit
+optimizer_prune_level
+optimizer_search_depth
+optimizer_switch
+optimizer_trace
+optimizer_trace_features
+optimizer_trace_limit
+optimizer_trace_max_mem_size
+optimizer_trace_offset
+performance_schema
+performance_schema_accounts_size
+performance_schema_digests_size
+performance_schema_events_stages_history_long_size
+performance_schema_events_stages_history_size
+performance_schema_events_statements_history_long_size
+performance_schema_events_statements_history_size
+performance_schema_events_waits_history_long_size
+performance_schema_events_waits_history_size
+performance_schema_hosts_size
+performance_schema_max_cond_classes
+performance_schema_max_cond_instances
+performance_schema_max_file_classes
+performance_schema_max_file_handles
+performance_schema_max_file_instances
+performance_schema_max_mutex_classes
+performance_schema_max_mutex_instances
+performance_schema_max_rwlock_classes
+performance_schema_max_rwlock_instances
+performance_schema_max_socket_classes
+performance_schema_max_socket_instances
+performance_schema_max_stage_classes
+performance_schema_max_statement_classes
+performance_schema_max_table_handles
+performance_schema_max_table_instances
+performance_schema_max_thread_classes
+performance_schema_max_thread_instances
+performance_schema_session_connect_attrs_size
+performance_schema_setup_actors_size
+performance_schema_setup_objects_size
+performance_schema_users_size
+pid_file
+preload_buffer_size
+profiling
+profiling_history_size
+protocol_version
+pseudo_slave_mode
+pseudo_thread_id
+query_alloc_block_size
+query_cache_limit
+query_cache_min_res_unit
+query_cache_size
+query_cache_type
+query_prealloc_size
+range_alloc_block_size
+rbr_exec_mode
+read_buffer_size
+read_rnd_buffer_size
+relay_log_info_file
+relay_log_info_repository
+relay_log_recovery
+relay_log_space_limit
+report_port
+rewriter_enabled
+rewriter_verbose
+rpl_semi_sync_master_enabled
+rpl_semi_sync_master_timeout
+rpl_semi_sync_master_trace_level
+rpl_semi_sync_master_wait_for_slave_count
+rpl_semi_sync_master_wait_no_slave
+rpl_semi_sync_master_wait_point
+rpl_semi_sync_slave_enabled
+rpl_semi_sync_slave_trace_level
+rpl_stop_slave_timeout
+secure_auth
+server_id
+server_id_bits
+server_uuid
+session_track_gtids
+session_track_schema
+session_track_state_change
+session_track_system_variables
+sha256_password_proxy_users
+show_compatibility_56
+show_old_temporals
+skip_external_locking
+skip_networking
+skip_show_database
+slave_allow_batching
+slave_checkpoint_group
+slave_checkpoint_period
+slave_compressed_protocol
+slave_exec_mode
+slave_load_tmpdir
+slave_max_allowed_packet
+slave_net_timeout
+slave_parallel_type
+slave_parallel_workers
+slave_pending_jobs_size_max
+slave_preserve_commit_order
+slave_rows_search_algorithms
+slave_skip_errors
+slave_sql_verify_checksum
+slave_transaction_retries
+slow_launch_time
+slow_query_log
+slow_query_log_file
+sort_buffer_size
+sql_buffer_result
+sql_log_off
+sql_notes
+sql_quote_show_create
+sql_safe_updates
+sql_slave_skip_counter
+sql_warnings
+ssl_cipher
+storage_engine
+stored_program_cache
+super_read_only
+sync_binlog
+sync_frm
+sync_master_info
+sync_relay_log
+sync_relay_log_info
+table_definition_cache
+table_open_cache
+table_open_cache_instances
+thread_cache_size
+thread_concurrency
+thread_handling
+thread_pool_size
+thread_stack
+time_format
+tls_version
+tmp_table_size
+tmpdir
+transaction_alloc_block_size
+transaction_allow_batching
+transaction_prealloc_size
+transaction_read_only
+transaction_write_set_extraction
+tx_read_only
+unique_checks
+updatable_views_with_limit
+`
 )
 
-var (
-	// Map known global variables to help strings. Unknown will be mapped to generic gauges.
-	globalVariablesHelp = map[string]string{
-		// https://github.com/facebook/mysql-5.6/wiki/New-MySQL-RocksDB-Server-Variables
-		"rocksdb_access_hint_on_compaction_start":         "File access pattern once a compaction is started, applied to all input files of a compaction.",
-		"rocksdb_advise_random_on_open":                   "Hint of random access to the filesystem when a data file is opened.",
-		"rocksdb_allow_concurrent_memtable_write":         "Allow multi-writers to update memtables in parallel.",
-		"rocksdb_allow_mmap_reads":                        "Allow the OS to mmap a data file for reads.",
-		"rocksdb_allow_mmap_writes":                       "Allow the OS to mmap a data file for writes.",
-		"rocksdb_block_cache_size":                        "Size of the LRU block cache in RocksDB. This memory is reserved for the block cache, which is in addition to any filesystem caching that may occur.",
-		"rocksdb_block_restart_interval":                  "Number of keys for each set of delta encoded data.",
-		"rocksdb_block_size_deviation":                    "If the percentage of free space in the current data block (size specified in rocksdb-block-size) is less than this amount, close the block (and write record to new block).",
-		"rocksdb_block_size":                              "Size of the data block for reading sst files.",
-		"rocksdb_bulk_load_size":                          "Sets the number of keys to accumulate before committing them to the storage engine during bulk loading.",
-		"rocksdb_bulk_load":                               "When set, MyRocks will ignore checking keys for uniqueness or acquiring locks during transactions. This option should only be used when the application is certain there are no row conflicts, such as when setting up a new MyRocks instance from an existing MySQL dump.",
-		"rocksdb_bytes_per_sync":                          "Enables the OS to sync out file writes as data files are created.",
-		"rocksdb_cache_index_and_filter_blocks":           "Requests RocksDB to use the block cache for caching the index and bloomfilter data blocks from each data file. If this is not set, RocksDB will allocate additional memory to maintain these data blocks.",
-		"rocksdb_checksums_pct":                           "Sets the percentage of rows to calculate and set MyRocks checksums.",
-		"rocksdb_collect_sst_properties":                  "Enables collecting statistics of each data file for improving optimizer behavior.",
-		"rocksdb_commit_in_the_middle":                    "Commit rows implicitly every rocksdb-bulk-load-size, during bulk load/insert/update/deletes.",
-		"rocksdb_compaction_readahead_size":               "When non-zero, bigger reads are performed during compaction. Useful if running RocksDB on spinning disks, compaction will do sequential instead of random reads.",
-		"rocksdb_compaction_sequential_deletes_count_sd":  "If enabled, factor in single deletes as part of rocksdb-compaction-sequential-deletes.",
-		"rocksdb_compaction_sequential_deletes_file_size": "Threshold to trigger compaction if the number of sequential keys that are all delete markers exceed this value. While this compaction helps reduce request latency by removing delete markers, it can increase write rates of RocksDB.",
-		"rocksdb_compaction_sequential_deletes_window":    "Threshold to trigger compaction if, within a sliding window of keys, there exists this parameter's number of delete marker.",
-		"rocksdb_compaction_sequential_deletes":           "Enables triggering of compaction when the number of delete markers in a data file exceeds a certain threshold. Depending on workload patterns, RocksDB can potentially maintain large numbers of delete markers and increase latency of all queries.",
-		"rocksdb_create_if_missing":                       "Allows creating the RocksDB database if it does not exist.",
-		"rocksdb_create_missing_column_families":          "Allows creating new column families if they did not exist.",
-		"rocksdb_db_write_buffer_size":                    "Size of the memtable used to store writes within RocksDB. This is the size per column family. Once this size is reached, a flush of the memtable to persistent media occurs.",
-		"rocksdb_deadlock_detect":                         "Enables deadlock detection in RocksDB.",
-		"rocksdb_debug_optimizer_no_zero_cardinality":     "Test only to prevent MyRocks from calculating cardinality.",
-		"rocksdb_delayed_write_rate":                      "When RocksDB hits the soft limits/thresholds for writes, such as soft_pending_compaction_bytes_limit being hit, or level0_slowdown_writes_trigger being hit, RocksDB will slow the write rate down to the value of this parameter as bytes/second.",
-		"rocksdb_delete_obsolete_files_period_micros":     "The periodicity of when obsolete files get deleted, but does not affect files removed through compaction.",
-		"rocksdb_enable_bulk_load_api":                    "Enables using the SSTFileWriter feature in RocksDB, which bypasses the memtable, but this requires keys to be inserted into the table in either ascending or descending order. If disabled, bulk loading uses the normal write path via the memtable and does not keys to be inserted in any order.",
-		"rocksdb_enable_thread_tracking":                  "Set to allow RocksDB to track the status of threads accessing the database.",
-		"rocksdb_enable_write_thread_adaptive_yield":      "Set to allow RocksDB write batch group leader to wait up to the max time allowed before blocking on a mutex, allowing an increase in throughput for concurrent workloads.",
-		"rocksdb_error_if_exists":                         "If set, reports an error if an existing database already exists.",
-		"rocksdb_flush_log_at_trx_commit":                 "Sync'ing on transaction commit similar to innodb-flush-log-at-trx-commit: 0 - never sync, 1 - always sync, 2 - sync based on a timer controlled via rocksdb-background-sync",
-		"rocksdb_flush_memtable_on_analyze":               "When analyze table is run, determines of the memtable should be flushed so that data in the memtable is also used for calculating stats.",
-		"rocksdb_force_compute_memtable_stats":            "When enabled, also include data in the memtables for index statistics calculations used by the query optimizer. Greater accuracy, but requires more cpu.",
-		"rocksdb_force_flush_memtable_now":                "Triggers MyRocks to flush the memtables out to the data files.",
-		"rocksdb_force_index_records_in_range":            "When force index is used, a non-zero value here will be used as the number of rows to be returned to the query optimizer when trying to determine the estimated number of rows.",
-		"rocksdb_hash_index_allow_collision":              "Enables RocksDB to allow hashes to collide (uses less memory). Otherwise, the full prefix is stored to prevent hash collisions.",
-		"rocksdb_keep_log_file_num":                       "Sets the maximum number of info LOG files to keep around.",
-		"rocksdb_lock_scanned_rows":                       "If enabled, rows that are scanned during UPDATE remain locked even if they have not been updated.",
-		"rocksdb_lock_wait_timeout":                       "Sets the number of seconds MyRocks will wait to acquire a row lock before aborting the request.",
-		"rocksdb_log_file_time_to_roll":                   "Sets the number of seconds a info LOG file captures before rolling to a new LOG file.",
-		"rocksdb_manifest_preallocation_size":             "Sets the number of bytes to preallocate for the MANIFEST file in RocksDB and reduce possible random I/O on XFS. MANIFEST files are used to store information about column families, levels, active files, etc.",
-		"rocksdb_max_open_files":                          "Sets a limit on the maximum number of file handles opened by RocksDB.",
-		"rocksdb_max_row_locks":                           "Sets a limit on the maximum number of row locks held by a transaction before failing it.",
-		"rocksdb_max_subcompactions":                      "For each compaction job, the maximum threads that will work on it simultaneously (i.e. subcompactions). A value of 1 means no subcompactions.",
-		"rocksdb_max_total_wal_size":                      "Sets a limit on the maximum size of WAL files kept around. Once this limit is hit, RocksDB will force the flushing of memtables to reduce the size of WAL files.",
-		"rocksdb_merge_buf_size":                          "Size (in bytes) of the merge buffers used to accumulate data during secondary key creation. During secondary key creation the data, we avoid updating the new indexes through the memtable and L0 by writing new entries directly to the lowest level in the database. This requires the values to be sorted so we use a merge/sort algorithm. This setting controls how large the merge buffers are. The default is 64Mb.",
-		"rocksdb_merge_combine_read_size":                 "Size (in bytes) of the merge combine buffer used in the merge/sort algorithm as described in rocksdb-merge-buf-size.",
-		"rocksdb_new_table_reader_for_compaction_inputs":  "Indicates whether RocksDB should create a new file descriptor and table reader for each compaction input. Doing so may use more memory but may allow pre-fetch options to be specified for compaction input files without impacting table readers used for user queries.",
-		"rocksdb_no_block_cache":                          "Disables using the block cache for a column family.",
-		"rocksdb_paranoid_checks":                         "Forces RocksDB to re-read a data file that was just created to verify correctness.",
-		"rocksdb_pause_background_work":                   "Test only to start and stop all background compactions within RocksDB.",
-		"rocksdb_perf_context_level":                      "Sets the level of information to capture via the perf context plugins.",
-		"rocksdb_persistent_cache_size_mb":                "The size (in Mb) to allocate to the RocksDB persistent cache if desired.",
-		"rocksdb_pin_l0_filter_and_index_blocks_in_cache": "If rocksdb-cache-index-and-filter-blocks is true then this controls whether RocksDB 'pins' the filter and index blocks in the cache.",
-		"rocksdb_print_snapshot_conflict_queries":         "If this is true, MyRocks will log queries that generate snapshot conflicts into the .err log.",
-		"rocksdb_rate_limiter_bytes_per_sec":              "Controls the rate at which RocksDB is allowed to write to media via memtable flushes and compaction.",
-		"rocksdb_records_in_range":                        "Test only to override the value returned by records-in-range.",
-		"rocksdb_seconds_between_stat_computes":           "Sets the number of seconds between recomputation of table statistics for the optimizer.",
-		"rocksdb_signal_drop_index_thread":                "Test only to signal the MyRocks drop index thread.",
-		"rocksdb_skip_bloom_filter_on_read":               "Indicates whether the bloom filters should be skipped on reads.",
-		"rocksdb_skip_fill_cache":                         "Requests MyRocks to skip caching data on read requests.",
-		"rocksdb_stats_dump_period_sec":                   "Sets the number of seconds to perform a RocksDB stats dump to the info LOG files.",
-		"rocksdb_store_row_debug_checksums":               "Include checksums when writing index/table records.",
-		"rocksdb_strict_collation_check":                  "Enables MyRocks to check and verify table indexes have the proper collation settings.",
-		"rocksdb_table_cache_numshardbits":                "Sets the number of table caches within RocksDB.",
-		"rocksdb_use_adaptive_mutex":                      "Enables adaptive mutexes in RocksDB which spins in user space before resorting to the kernel.",
-		"rocksdb_use_direct_reads":                        "Enable direct IO when opening a file for read/write. This means that data will not be cached or buffered.",
-		"rocksdb_use_fsync":                               "Requires RocksDB to use fsync instead of fdatasync when requesting a sync of a data file.",
-		"rocksdb_validate_tables":                         "Requires MyRocks to verify all of MySQL's .frm files match tables stored in RocksDB.",
-		"rocksdb_verify_row_debug_checksums":              "Verify checksums when reading index/table records.",
-		"rocksdb_wal_bytes_per_sync":                      "Controls the rate at which RocksDB writes out WAL file data.",
-		"rocksdb_wal_recovery_mode":                       "Sets RocksDB's level of tolerance when recovering the WAL files after a system crash.",
-		"rocksdb_wal_size_limit_mb":                       "Maximum size the RocksDB WAL is allow to grow to. When this size is exceeded rocksdb attempts to flush sufficient memtables to allow for the deletion of the oldest log.",
-		"rocksdb_wal_ttl_seconds":                         "No WAL file older than this value should exist.",
-		"rocksdb_whole_key_filtering":                     "Enables the bloomfilter to use the whole key for filtering instead of just the prefix. In order for this to be efficient, lookups should use the whole key for matching.",
-		"rocksdb_write_disable_wal":                       "Disables logging data to the WAL files. Useful for bulk loading.",
-		"rocksdb_write_ignore_missing_column_families":    "If 1, then writes to column families that do not exist is ignored by RocksDB.",
+var noopGlobalVariables map[string]bool
+
+func init() {
+	noopGlobalVariables = make(map[string]bool)
+	configItems := strings.Split(strings.TrimSpace(noopGlobalVariablesString), "\n")
+	for _, key := range configItems {
+		noopGlobalVariables[key] = true
 	}
-)
+}
 
 // ScrapeGlobalVariables collects from `SHOW GLOBAL VARIABLES`.
 type ScrapeGlobalVariables struct{}
@@ -147,14 +517,10 @@ func (ScrapeGlobalVariables) Scrape(ctx context.Context, db *sql.DB, ch chan<- p
 
 	var key string
 	var val sql.RawBytes
+
 	var textItems = map[string]string{
-		"innodb_version":         "",
-		"version":                "",
-		"version_comment":        "",
-		"wsrep_cluster_name":     "",
-		"wsrep_provider_options": "",
-		"tx_isolation":           "",
-		"transaction_isolation":  "",
+		"version":         "",
+		"version_comment": "",
 	}
 
 	for globalVariablesRows.Next() {
@@ -163,11 +529,13 @@ func (ScrapeGlobalVariables) Scrape(ctx context.Context, db *sql.DB, ch chan<- p
 		}
 
 		key = validPrometheusName(key)
+		// skip noop variables
+		if noopGlobalVariables[key] {
+			continue
+		}
+
 		if floatVal, ok := parseStatus(val); ok {
-			help := globalVariablesHelp[key]
-			if help == "" {
-				help = "Generic gauge metric from SHOW GLOBAL VARIABLES."
-			}
+			help := "Generic gauge metric from SHOW GLOBAL VARIABLES."
 			ch <- prometheus.MustNewConstMetric(
 				newDesc(globalVariables, key, help),
 				prometheus.GaugeValue,
@@ -183,64 +551,12 @@ func (ScrapeGlobalVariables) Scrape(ctx context.Context, db *sql.DB, ch chan<- p
 
 	// mysql_version_info metric.
 	ch <- prometheus.MustNewConstMetric(
-		prometheus.NewDesc(prometheus.BuildFQName(namespace, "version", "info"), "MySQL version and distribution.",
-			[]string{"innodb_version", "version", "version_comment"}, nil),
-		prometheus.GaugeValue, 1, textItems["innodb_version"], textItems["version"], textItems["version_comment"],
+		prometheus.NewDesc(prometheus.BuildFQName(namespace, "version", "info"), "TiDB version and distribution.",
+			[]string{"version", "version_comment"}, nil),
+		prometheus.GaugeValue, 1, textItems["version"], textItems["version_comment"],
 	)
 
-	// mysql_galera_variables_info metric.
-	if textItems["wsrep_cluster_name"] != "" {
-		ch <- prometheus.MustNewConstMetric(
-			prometheus.NewDesc(prometheus.BuildFQName(namespace, "galera", "variables_info"), "PXC/Galera variables information.",
-				[]string{"wsrep_cluster_name"}, nil),
-			prometheus.GaugeValue, 1, textItems["wsrep_cluster_name"],
-		)
-	}
-
-	// mysql_galera_gcache_size_bytes metric.
-	if textItems["wsrep_provider_options"] != "" {
-		ch <- prometheus.MustNewConstMetric(
-			newDesc("galera", "gcache_size_bytes", "PXC/Galera gcache size."),
-			prometheus.GaugeValue,
-			parseWsrepProviderOptions(textItems["wsrep_provider_options"]),
-		)
-	}
-
-	// mysql_transaction_isolation metric.
-	if textItems["transaction_isolation"] != "" || textItems["tx_isolation"] != "" {
-		level := textItems["transaction_isolation"]
-		if level == "" {
-			level = textItems["tx_isolation"]
-		}
-		ch <- prometheus.MustNewConstMetric(
-			prometheus.NewDesc(prometheus.BuildFQName(namespace, "transaction", "isolation"), "MySQL transaction isolation.",
-				[]string{"level"}, nil),
-			prometheus.GaugeValue,
-			1, level,
-		)
-	}
-
 	return nil
-}
-
-// parseWsrepProviderOptions parse wsrep_provider_options to get gcache.size in bytes.
-func parseWsrepProviderOptions(opts string) float64 {
-	var val float64
-	r, _ := regexp.Compile(`gcache.size = (\d+)([MG]?);`)
-	data := r.FindStringSubmatch(opts)
-	if data == nil {
-		return 0
-	}
-
-	val, _ = strconv.ParseFloat(data[1], 64)
-	switch data[2] {
-	case "M":
-		val = val * 1024 * 1024
-	case "G":
-		val = val * 1024 * 1024 * 1024
-	}
-
-	return val
 }
 
 func validPrometheusName(s string) string {

@@ -3,7 +3,7 @@ go:
     # be updated.
     version: 1.19
 repository:
-    path: github.com/prometheus/mysqld_exporter
+    path: github.com/coderplay/tidb_exporter
 build:
     flags: -a -tags netgo
     ldflags: |
